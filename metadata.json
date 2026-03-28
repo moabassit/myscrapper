@@ -1,0 +1,5 @@
+{
+  "name": "Scraper-001",
+  "description": "An AI-powered data scraper that uses Google Search and Maps to generate CSV datasets from natural language prompts.",
+  "requestFramePermissions": []
+}

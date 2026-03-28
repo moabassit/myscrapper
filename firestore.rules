@@ -1,0 +1,132 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function hasRole(role) {
+      return isAuthenticated() && getUserData().role == role;
+    }
+    
+    function isSameTenant(tenantId) {
+      return isAuthenticated() && getUserData().tenantId == tenantId;
+    }
+
+    // ===============================================================
+    // Users Collection
+    // ===============================================================
+    match /users/{userId} {
+      // Admin can read/write all users in their tenant. User can read their own profile.
+      allow read: if isAuthenticated() && (hasRole('admin') || request.auth.uid == userId);
+      
+      // Allow users to create their own profile.
+      // If they are the designated admin email, they can set their role to 'admin'.
+      // Otherwise, they can only set their role to 'auditor' or 'manager' if an admin does it, 
+      // but for self-registration we'll restrict them to 'auditor' or require admin approval.
+      allow create: if isAuthenticated() && request.auth.uid == userId && (
+        (request.auth.token.email == "mo.abassit.z@gmail.com" && request.resource.data.role == 'admin') ||
+        (request.resource.data.role == 'auditor')
+      );
+      
+      allow update, delete: if hasRole('admin') && isSameTenant(request.resource.data.tenantId);
+    }
+
+    // ===============================================================
+    // Projects & Sites & Templates (Master Data)
+    // ===============================================================
+    match /projects/{projectId} {
+      allow read: if isAuthenticated() && isSameTenant(resource.data.tenantId);
+      allow write: if hasRole('admin') && isSameTenant(request.resource.data.tenantId);
+    }
+    
+    match /sites/{siteId} {
+      allow read: if isAuthenticated() && isSameTenant(resource.data.tenantId);
+      allow write: if hasRole('admin') && isSameTenant(request.resource.data.tenantId);
+    }
+    
+    match /inspectionTemplates/{templateId} {
+      allow read: if isAuthenticated() && isSameTenant(resource.data.tenantId);
+      allow write: if hasRole('admin') && isSameTenant(request.resource.data.tenantId);
+    }
+
+    // ===============================================================
+    // Inspections (Operational Data)
+    // ===============================================================
+    match /inspections/{inspectionId} {
+      // Read: Admin/Manager can read all in tenant. Auditor can read ONLY their own.
+      allow read: if isAuthenticated() && isSameTenant(resource.data.tenantId) && 
+                  (hasRole('admin') || hasRole('manager') || (hasRole('auditor') && resource.data.auditorId == request.auth.uid));
+      
+      // Create: Auditor can create for themselves. Admin can create. Manager CANNOT.
+      allow create: if isAuthenticated() && isSameTenant(request.resource.data.tenantId) &&
+                    (hasRole('admin') || (hasRole('auditor') && request.resource.data.auditorId == request.auth.uid));
+                    
+      // Update: Auditor can update their own if not closed. Admin can update.
+      allow update: if isAuthenticated() && isSameTenant(resource.data.tenantId) &&
+                    (hasRole('admin') || 
+                    (hasRole('auditor') && resource.data.auditorId == request.auth.uid && resource.data.status != 'closed'));
+                    
+      // Delete: Only Admin
+      allow delete: if hasRole('admin') && isSameTenant(resource.data.tenantId);
+    }
+
+    // ===============================================================
+    // CAPA (Corrective Actions)
+    // ===============================================================
+    match /capa/{capaId} {
+      allow read: if isAuthenticated() && isSameTenant(resource.data.tenantId) && 
+                  (hasRole('admin') || hasRole('manager') || (hasRole('auditor') && resource.data.ownerId == request.auth.uid));
+      
+      allow create: if isAuthenticated() && isSameTenant(request.resource.data.tenantId) &&
+                    (hasRole('admin') || (hasRole('auditor') && request.resource.data.ownerId == request.auth.uid));
+                    
+      allow update: if isAuthenticated() && isSameTenant(resource.data.tenantId) &&
+                    (hasRole('admin') || (hasRole('auditor') && resource.data.ownerId == request.auth.uid));
+                    
+      allow delete: if hasRole('admin') && isSameTenant(resource.data.tenantId);
+    }
+
+    // ===============================================================
+    // Expenses
+    // ===============================================================
+    match /expenses/{expenseId} {
+      allow read: if isAuthenticated() && isSameTenant(resource.data.tenantId) && 
+                  (hasRole('admin') || hasRole('manager') || (hasRole('auditor') && resource.data.createdBy == request.auth.uid));
+      
+      allow create: if isAuthenticated() && isSameTenant(request.resource.data.tenantId) &&
+                    (hasRole('admin') || (hasRole('auditor') && request.resource.data.createdBy == request.auth.uid));
+                    
+      allow update: if isAuthenticated() && isSameTenant(resource.data.tenantId) &&
+                    (hasRole('admin') || (hasRole('auditor') && resource.data.createdBy == request.auth.uid));
+                    
+      allow delete: if hasRole('admin') && isSameTenant(resource.data.tenantId);
+    }
+
+    // ===============================================================
+    // Usage Stats (Global)
+    // ===============================================================
+    match /usage_stats/{docId} {
+      // Allow authenticated users to read and update global usage stats
+      allow read, write: if isAuthenticated();
+    }
+
+    // ===============================================================
+    // Audit Trail (Change Logs)
+    // ===============================================================
+    match /changeLogs/{logId} {
+      // Only Admin can read logs. Anyone can create a log (via Cloud Functions or client), but no one can update/delete.
+      allow read: if hasRole('admin') && isSameTenant(resource.data.tenantId);
+      allow create: if isAuthenticated() && isSameTenant(request.resource.data.tenantId);
+      allow update, delete: if false; // Immutable
+    }
+  }
+}

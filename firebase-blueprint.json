@@ -1,0 +1,160 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the EHS system.",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string", "description": "Tenant ID for data isolation." },
+        "name": { "type": "string", "description": "Full name of the user." },
+        "email": { "type": "string", "format": "email", "description": "Email address." },
+        "role": { "type": "string", "enum": ["auditor", "manager", "admin"], "description": "User role." },
+        "assignedProjects": { "type": "array", "items": { "type": "string" }, "description": "List of project IDs assigned to the user." },
+        "assignedSites": { "type": "array", "items": { "type": "string" }, "description": "List of site IDs assigned to the user." },
+        "status": { "type": "string", "enum": ["active", "inactive"], "description": "User account status." }
+      },
+      "required": ["tenantId", "name", "email", "role", "status"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A telecom project.",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string", "description": "Tenant ID." },
+        "name": { "type": "string", "description": "Project name." },
+        "customer": { "type": "string", "description": "Customer name." },
+        "region": { "type": "string", "description": "Geographical region." }
+      },
+      "required": ["tenantId", "name", "customer", "region"]
+    },
+    "Site": {
+      "title": "Site",
+      "description": "A site within a project.",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string", "description": "Tenant ID." },
+        "projectId": { "type": "string", "description": "ID of the parent project." },
+        "name": { "type": "string", "description": "Site name." }
+      },
+      "required": ["tenantId", "projectId", "name"]
+    },
+    "InspectionTemplate": {
+      "title": "InspectionTemplate",
+      "description": "Template for EHS inspections.",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string", "description": "Tenant ID." },
+        "version": { "type": "number", "description": "Template version." },
+        "status": { "type": "string", "enum": ["draft", "approved"], "description": "Template status." },
+        "activityType": { "type": "string", "description": "Type of activity this template is for." },
+        "sections": { "type": "array", "items": { "type": "object" }, "description": "Sections of the template." }
+      },
+      "required": ["tenantId", "version", "status", "activityType", "sections"]
+    },
+    "Inspection": {
+      "title": "Inspection",
+      "description": "An EHS inspection record.",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string", "description": "Tenant ID." },
+        "projectId": { "type": "string", "description": "Project ID." },
+        "siteId": { "type": "string", "description": "Site ID." },
+        "auditorId": { "type": "string", "description": "ID of the auditor who performed the inspection." },
+        "activityType": { "type": "string", "description": "Type of activity inspected." },
+        "date": { "type": "string", "format": "date-time", "description": "Date of inspection." },
+        "findings": { "type": "array", "items": { "type": "object" }, "description": "List of findings/hazards." },
+        "score": { "type": "number", "description": "Inspection score." },
+        "status": { "type": "string", "enum": ["open", "closed", "critical"], "description": "Inspection status." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp." },
+        "createdBy": { "type": "string", "description": "ID of the user who created the record." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp." },
+        "updatedBy": { "type": "string", "description": "ID of the user who last updated the record." }
+      },
+      "required": ["tenantId", "projectId", "siteId", "auditorId", "activityType", "date", "status", "createdAt", "createdBy", "updatedAt", "updatedBy"]
+    },
+    "CAPA": {
+      "title": "CAPA",
+      "description": "Corrective and Preventive Action record.",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string", "description": "Tenant ID." },
+        "inspectionId": { "type": "string", "description": "ID of the related inspection." },
+        "ownerId": { "type": "string", "description": "ID of the user responsible for the CAPA." },
+        "dueDate": { "type": "string", "format": "date-time", "description": "Due date for completion." },
+        "priority": { "type": "string", "enum": ["low", "medium", "high", "critical"], "description": "Priority level." },
+        "status": { "type": "string", "enum": ["open", "in-progress", "resolved", "closed"], "description": "CAPA status." },
+        "evidenceRefs": { "type": "array", "items": { "type": "string" }, "description": "Storage paths for evidence." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp." },
+        "createdBy": { "type": "string", "description": "ID of the user who created the record." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp." },
+        "updatedBy": { "type": "string", "description": "ID of the user who last updated the record." }
+      },
+      "required": ["tenantId", "inspectionId", "ownerId", "dueDate", "priority", "status", "createdAt", "createdBy", "updatedAt", "updatedBy"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Daily expense record.",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string", "description": "Tenant ID." },
+        "projectId": { "type": "string", "description": "Project ID." },
+        "siteId": { "type": "string", "description": "Site ID." },
+        "inspectionId": { "type": "string", "description": "Optional related inspection ID." },
+        "amount": { "type": "number", "description": "Expense amount." },
+        "category": { "type": "string", "description": "Expense category." },
+        "date": { "type": "string", "format": "date-time", "description": "Date of expense." },
+        "createdBy": { "type": "string", "description": "ID of the user who created the record." }
+      },
+      "required": ["tenantId", "projectId", "siteId", "amount", "category", "date", "createdBy"]
+    },
+    "ChangeLog": {
+      "title": "ChangeLog",
+      "description": "Audit trail record.",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string", "description": "Tenant ID." },
+        "entityType": { "type": "string", "description": "Type of entity changed." },
+        "entityId": { "type": "string", "description": "ID of the changed entity." },
+        "action": { "type": "string", "enum": ["create", "update", "delete"], "description": "Action performed." },
+        "changes": { "type": "object", "description": "Map of changes." },
+        "userId": { "type": "string", "description": "ID of the user who made the change." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Timestamp of the change." }
+      },
+      "required": ["tenantId", "entityType", "entityId", "action", "userId", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and roles."
+    },
+    "/projects/{projectId}": {
+      "schema": "Project",
+      "description": "Telecom projects."
+    },
+    "/sites/{siteId}": {
+      "schema": "Site",
+      "description": "Sites within projects."
+    },
+    "/inspectionTemplates/{templateId}": {
+      "schema": "InspectionTemplate",
+      "description": "Templates for inspections."
+    },
+    "/inspections/{inspectionId}": {
+      "schema": "Inspection",
+      "description": "Inspection records."
+    },
+    "/capa/{capaId}": {
+      "schema": "CAPA",
+      "description": "CAPA records."
+    },
+    "/expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Expense records."
+    },
+    "/changeLogs/{logId}": {
+      "schema": "ChangeLog",
+      "description": "Audit trail logs."
+    }
+  }
+}
